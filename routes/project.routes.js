@@ -33,6 +33,7 @@ router.post('/projects', (req, res, next) => {
 router.get('/projects/:projectId', (req, res, next) => {
     const { projectId } = req.params;
 
+    //validate projectId
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
         res.status(400).json({ message: 'Specified id is not valid' });
         return;
@@ -74,8 +75,11 @@ router.delete('/projects/:projectId', (req, res, next) => {
     }
 
     Project.findByIdAndRemove(projectId)
-        .then(() => res.json({ message: `Project with ${projectId} is removed successfully.` }))
-        .catch(error => res.json(error));
+        .then(deteletedProject => {
+            return Task.deleteMany({ _id: { $in: deteletedProject.tasks } });
+        })
+        .then(() => res.json({ message: `Project with id ${projectId} & all associated tasks were removed successfully.` }))
+        .catch(error => res.status(500).json(error));
 });
 
 module.exports = router;
