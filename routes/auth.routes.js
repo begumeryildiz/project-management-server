@@ -5,6 +5,8 @@ const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 
+const {isAuthenticated} = require("../middleware/jwt.middleware")
+
 // How many rounds should bcrypt run the salt (default [10 - 12 rounds])
 const saltRounds = 10;
 
@@ -12,9 +14,6 @@ const saltRounds = 10;
 const User = require("../models/User.model");
 
 
-router.get("/loggedin", (req, res) => {
-  res.json(req.user);
-});
 
 router.post("/signup", (req, res) => {
   const { username, email, password } = req.body;
@@ -44,7 +43,7 @@ router.post("/signup", (req, res) => {
   */
 
   // Search the database for a user with the username submitted in the form
-  User.findOne({ username }).then((found) => {
+  User.findOne({ name: username }).then((found) => {
     // If the user is found, send the message username is taken
     if (found) {
       return res.status(400).json({ errorMessage: "Username already taken." });
@@ -111,6 +110,7 @@ router.post("/login", (req, res, next) => {
           return res.status(400).json({ errorMessage: "Wrong credentials." });
         }
 
+        //at this point, we know that credentials are correct (login is successfull)
 
         const { _id, email, name } = user;
 
@@ -124,11 +124,8 @@ router.post("/login", (req, res, next) => {
           { algorithm: 'HS256', expiresIn: "6h" }
         );
 
-          console.log(authToken)
-
         // Send the token as the response
         res.status(200).json({ authToken: authToken });
-
 
       });
     })
@@ -141,13 +138,18 @@ router.post("/login", (req, res, next) => {
     });
 });
 
-router.get("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ errorMessage: err.message });
-    }
-    res.json({ message: "Done" });
-  });
+
+// GET  /auth/verify  -  Used to verify JWT stored on the client
+router.get('/verify', isAuthenticated, (req, res, next) => {      
+ 
+  // If JWT token is valid the payload gets decoded by the
+  // isAuthenticated middleware and made available on `req.payload`
+  console.log(`req.payload`, req.payload);
+ 
+  // Send back the object with user data
+  // previously set as the token payload
+  res.status(200).json(req.payload);
 });
+
 
 module.exports = router;
